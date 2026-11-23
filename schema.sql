@@ -82,6 +82,9 @@ VALUES (
     )
 ON CONFLICT (id) DO NOTHING;
 
+SELECT setval(pg_get_serial_sequence('users', 'id'), COALESCE(MAX(id), 1))
+FROM users;
+
 -- 3. Seed Rooms (Sebagai referensi foreign key booking)
 INSERT INTO
     rooms (id, name, capacity, is_active)
@@ -95,6 +98,9 @@ VALUES (1, 'Ruang Garuda', 10, TRUE),
         FALSE
     )
 ON CONFLICT (id) DO NOTHING;
+
+SELECT setval(pg_get_serial_sequence('rooms', 'id'), COALESCE(MAX(id), 1))
+FROM rooms;
 
 -- 4. Seed Data Bookings
 -- Mencakup contoh:
