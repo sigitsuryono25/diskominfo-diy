@@ -11,6 +11,7 @@ export interface BookingsEntity {
 }
 
 export interface CreateBookingRequest {
+    room_id: number;
     title: string;
     start_time: string;
     end_time: string;
