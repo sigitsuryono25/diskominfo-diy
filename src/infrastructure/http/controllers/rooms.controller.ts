@@ -8,8 +8,8 @@ export class RoomsController {
 
 
     async create(request: FastifyRequest<{ Body: RoomsEntity }>, reply: FastifyReply) {
-        const data = await this.roomUseCase.create(request.body)
-        return ResponseFormatter.created(reply, data)
+        const data = await this.roomUseCase.create(request.body);
+        return reply.status(201).send(data);
     }
 
     async getAvailable(request: FastifyRequest<{ Querystring: { start: string; end: string } }>, reply: FastifyReply) {

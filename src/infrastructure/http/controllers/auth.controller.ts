@@ -9,11 +9,6 @@ export class AuthController {
 
   async findByEmail(request: FastifyRequest<{ Body: UserRequest }>, reply: FastifyReply) {
     const token = await this.userRepository.findByEmail(request.body);
-    return ResponseFormatter.ok(reply, {
-      message: 'Login berhasil',
-      access_token: token,
-      token_type: 'Bearer',
-      expires_in: 3600,
-    });
+    return reply.status(200).send({ token });
   }
 }

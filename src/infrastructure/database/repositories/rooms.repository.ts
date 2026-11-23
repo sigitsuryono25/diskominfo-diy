@@ -3,12 +3,14 @@ import { pool } from "../pool";
 
 export class RoomsRepository implements IRoomsRepository {
     async create(roomsEntity: RoomsEntity): Promise<RoomsEntity> {
+        const isActive = roomsEntity.is_active ?? true;
         const db = await pool.query(
             `INSERT INTO rooms (name, capacity, is_active)
             VALUES($1, $2, $3)
-            RETURNING id, name, capacity, is_active, created_at, updated_at
-            `
-            , [roomsEntity.name, roomsEntity.capacity, roomsEntity.is_active]);
+            RETURNING id, name, capacity, is_active
+            `,
+            [roomsEntity.name, roomsEntity.capacity, isActive]
+        );
 
         return db.rows[0];
     }
