@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8080/api/v1';
 
+let runCounter = 1;
+
 function getFutureSlot(offsetDays: number): { startTime: string; endTime: string } {
-  // Keep the slot future-dated and unique across repeated test runs, including
-  // runs started within the same minute.
-  const start = new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000);
-  start.setUTCSeconds(start.getUTCSeconds() + (Date.now() % 60));
+  // Gunakan offset hari bertambah + timestamp unik agar rentang waktu tidak pernah tumpang tindih dengan test sebelumnya
+  const uniqueOffsetDays = offsetDays + Math.floor(Math.random() * 1000) + (runCounter++ * 5);
+  const start = new Date(Date.now() + uniqueOffsetDays * 24 * 60 * 60 * 1000);
+  start.setUTCHours(10, 0, 0, 0);
   return {
     startTime: start.toISOString(),
     endTime: new Date(start.getTime() + 2 * 60 * 60 * 1000).toISOString(),
