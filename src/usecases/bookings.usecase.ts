@@ -1,5 +1,5 @@
-import { BookingsEntity, CancelBookingResult, CreateBookingRequest, IBookingRepository } from "../domain/entities/booking.entity";
-import { BadRequestException } from "../domain/exceptions/app.exceptions";
+import { BookingsEntity, CancelBookingResult, CreateBookingRequest, IBookingRepository, UpdateBookingRequest } from "../domain/entities/booking.entity";
+import { BadRequestException, ForbiddenException, NotFoundException } from "../domain/exceptions/app.exceptions";
 
 export class BookingsUsecase {
     constructor(private bookingsRepository: IBookingRepository) { }
@@ -36,11 +36,58 @@ export class BookingsUsecase {
         });
     }
 
+    async getAllBookings(userId: number, role: 'ADMIN' | 'USER'): Promise<BookingsEntity[]> {
+        return this.bookingsRepository.findAll(userId, role);
+    }
+
+    async getBookingById(id: number, userId: number, role: 'ADMIN' | 'USER'): Promise<BookingsEntity> {
+        const booking = await this.bookingsRepository.findById(id);
+        if (!booking) {
+            throw new NotFoundException("Pemesanan tidak ditemukan");
+        }
+        if (role !== 'ADMIN' && booking.user_id !== userId) {
+            throw new ForbiddenException("Tidak memiliki akses ke pemesanan ini");
+        }
+        return booking;
+    }
+
+    async updateBooking(id: number, request: UpdateBookingRequest, userId: number, role: 'ADMIN' | 'USER'): Promise<BookingsEntity> {
+        const booking = await this.bookingsRepository.findById(id);
+        if (!booking) {
+            throw new NotFoundException("Pemesanan tidak ditemukan");
+        }
+        if (role !== 'ADMIN' && booking.user_id !== userId) {
+            throw new ForbiddenException("Tidak memiliki akses mengubah pemesanan ini");
+        }
+
+        const updateData: Partial<BookingsEntity> = {};
+        if (request.title) updateData.title = request.title.trim();
+        if (request.start_time) updateData.start_time = request.start_time;
+        if (request.end_time) updateData.end_time = request.end_time;
+
+        const updated = await this.bookingsRepository.update(id, updateData);
+        if (!updated) {
+            throw new NotFoundException("Gagal mengupdate pemesanan");
+        }
+        return updated;
+    }
+
     async cancel(id: number, userId: number, role: 'ADMIN' | 'USER'): Promise<CancelBookingResult> {
         if (!Number.isInteger(id) || id <= 0) {
             throw new BadRequestException("ID pemesanan tidak valid");
         }
 
         return this.bookingsRepository.cancel(id, userId, role);
+    }
+
+    async deleteBooking(id: number, userId: number, role: 'ADMIN' | 'USER'): Promise<void> {
+        const booking = await this.bookingsRepository.findById(id);
+        if (!booking) {
+            throw new NotFoundException("Pemesanan tidak ditemukan");
+        }
+        if (role !== 'ADMIN' && booking.user_id !== userId) {
+            throw new ForbiddenException("Tidak memiliki akses menghapus pemesanan ini");
+        }
+        await this.bookingsRepository.delete(id, userId, role);
     }
 }

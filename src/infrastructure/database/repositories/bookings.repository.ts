@@ -92,15 +92,95 @@ export class BookingsRepository implements IBookingRepository {
         }
     }
 
-    async update(_id: number, _booking: BookingsEntity): Promise<BookingsEntity | null> {
-        throw new Error("Method not implemented.");
+    async findById(id: number): Promise<BookingsEntity | null> {
+        const result = await pool.query<BookingsEntity>(
+            `SELECT id, room_id, user_id, title,
+                    to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as start_time,
+                    to_char(end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as end_time,
+                    status, created_at, updated_at
+             FROM bookings
+             WHERE id = $1`,
+            [id]
+        );
+        return result.rows[0] || null;
     }
 
-    async get(): Promise<BookingsEntity[]> {
-        throw new Error("Method not implemented.");
+    async findAll(userId?: number, role?: 'ADMIN' | 'USER'): Promise<BookingsEntity[]> {
+        let query = `
+            SELECT id, room_id, user_id, title,
+                   to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as start_time,
+                   to_char(end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as end_time,
+                   status, created_at, updated_at
+            FROM bookings
+        `;
+        const params: any[] = [];
+        if (role !== 'ADMIN' && userId) {
+            query += ` WHERE user_id = $1`;
+            params.push(userId);
+        }
+        query += ` ORDER BY id DESC`;
+
+        const result = await pool.query<BookingsEntity>(query, params);
+        return result.rows;
     }
 
-    async delete(_id: number): Promise<BookingsEntity | null> {
-        throw new Error("Method not implemented.");
+    async update(id: number, booking: Partial<BookingsEntity>): Promise<BookingsEntity | null> {
+        const fields: string[] = [];
+        const values: any[] = [];
+        let index = 1;
+
+        if (booking.title !== undefined) {
+            fields.push(`title = $${index++}`);
+            values.push(booking.title);
+        }
+        if (booking.room_id !== undefined) {
+            fields.push(`room_id = $${index++}`);
+            values.push(booking.room_id);
+        }
+        if (booking.start_time !== undefined) {
+            fields.push(`start_time = $${index++}`);
+            values.push(booking.start_time);
+        }
+        if (booking.end_time !== undefined) {
+            fields.push(`end_time = $${index++}`);
+            values.push(booking.end_time);
+        }
+        if (booking.status !== undefined) {
+            fields.push(`status = $${index++}`);
+            values.push(booking.status);
+        }
+
+        if (fields.length === 0) {
+            return this.findById(id);
+        }
+
+        fields.push(`updated_at = CURRENT_TIMESTAMP`);
+        values.push(id);
+
+        const result = await pool.query<BookingsEntity>(
+            `UPDATE bookings
+             SET ${fields.join(', ')}
+             WHERE id = $${index}
+             RETURNING id, room_id, user_id, title,
+                       to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as start_time,
+                       to_char(end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as end_time,
+                       status, created_at, updated_at`,
+            values
+        );
+
+        return result.rows[0] || null;
+    }
+
+    async delete(id: number, userId: number, role: 'ADMIN' | 'USER'): Promise<boolean> {
+        let query = 'DELETE FROM bookings WHERE id = $1';
+        const params: any[] = [id];
+
+        if (role !== 'ADMIN') {
+            query += ' AND user_id = $2';
+            params.push(userId);
+        }
+
+        const result = await pool.query(query, params);
+        return (result.rowCount ?? 0) > 0;
     }
 }
