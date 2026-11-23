@@ -63,21 +63,21 @@ VALUES (
         1,
         'Administrator',
         'admin@test.com',
-        '$2b$10$T8Zg8i8.UuO4b5l6r7e8auA9YV7V7R4K1N5m0b9l2y9q4G5t6u7i.',
+        '$2b$10$L9BwAC2v1nWsLbU2XtRZ/u8czSP0toDebe1W0J7zcBsvbagrNRhV2',
         'ADMIN'
     ),
     (
         2,
         'User Satu',
         'user1@test.com',
-        '$2b$10$T8Zg8i8.UuO4b5l6r7e8auA9YV7V7R4K1N5m0b9l2y9q4G5t6u7i.',
+        '$2b$10$L9BwAC2v1nWsLbU2XtRZ/u8czSP0toDebe1W0J7zcBsvbagrNRhV2',
         'USER'
     ),
     (
         3,
         'User Dua',
         'user2@test.com',
-        '$2b$10$T8Zg8i8.UuO4b5l6r7e8auA9YV7V7R4K1N5m0b9l2y9q4G5t6u7i.',
+        '$2b$10$L9BwAC2v1nWsLbU2XtRZ/u8czSP0toDebe1W0J7zcBsvbagrNRhV2',
         'USER'
     )
 ON CONFLICT (id) DO NOTHING;
