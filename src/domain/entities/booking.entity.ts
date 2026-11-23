@@ -3,8 +3,8 @@ export interface BookingsEntity {
     room_id: number;
     user_id: number;
     title: string;
-    start_time: Date;
-    end_time: Date;
+    start_time: string | Date;
+    end_time: string | Date;
     status: string;
     created_at?: Date;
     updated_at?: Date;

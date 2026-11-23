@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import fastify from 'fastify';
 import { appRoutes } from './infrastructure/http/routes/index.js';
 import { authenticate } from './infrastructure/http/middlewares/auth.middleware.js';
@@ -16,7 +17,10 @@ server.setErrorHandler((error, _request, reply) => {
   }
 
   server.log.error(error);
-  return reply.status(500).send({ message: 'Internal Server Error' });
+  return reply.status(500).send({
+    error_code: 'INTERNAL_SERVER_ERROR',
+    message: 'Terjadi kesalahan pada server',
+  });
 });
 
 // Health check endpoint

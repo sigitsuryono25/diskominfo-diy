@@ -1,5 +1,5 @@
 import { IUserRepository, UserRequest, UsersEntity } from "../domain/entities/users.entity";
-import { AppException, BadRequestException } from "../domain/exceptions/app.exceptions";
+import { AppException, BadRequestException, UnauthorizedException } from "../domain/exceptions/app.exceptions";
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 
@@ -16,7 +16,7 @@ export class UserUseCase {
         const user = await this.userRepository.findByEmail(userEntity.email);
 
         if (!user || !(await bcrypt.compare(userEntity.password, user.password_hash))) {
-            throw new BadRequestException('Email atau password salah');
+            throw new UnauthorizedException('Email atau password salah');
         }
 
         const secret = process.env.JWT_SECRET;

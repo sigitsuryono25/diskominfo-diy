@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "test": "node --test tests/**/*.test.ts"
+    "test": "tsx --test tests/booking.concurrency.test.ts"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

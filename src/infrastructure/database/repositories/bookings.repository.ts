@@ -40,7 +40,10 @@ export class BookingsRepository implements IBookingRepository {
             const result = await client.query<BookingsEntity>(
                 `INSERT INTO bookings (room_id, user_id, title, start_time, end_time, status)
                  VALUES ($1, $2, $3, $4, $5, 'CONFIRMED')
-                 RETURNING id, room_id, user_id, title, start_time, end_time, status`,
+                 RETURNING id, room_id, user_id, title, 
+                           to_char(start_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as start_time,
+                           to_char(end_time AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as end_time,
+                           status`,
                 [booking.room_id, booking.user_id, booking.title, booking.start_time, booking.end_time],
             );
 
