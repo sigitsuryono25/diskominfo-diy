@@ -1,21 +1,17 @@
 -- Tugas Bagian A: Query SQL Analitik
 -- Studi Kasus: Sistem Booking Ruang Meeting - Diskominfo DIY
 
--- 1. Rekap Jam Pemakaian Ruangan:
--- Menampilkan room_id, name, dan total durasi pemakaian (dalam satuan jam)
--- untuk setiap ruangan pada bulan berjalan. Hanya hitung transaksi yang berstatus CONFIRMED.
--- Catatan: Menggunakan LEFT JOIN agar ruangan yang belum dipakai tetap terdata (durasi 0).
--- EXTRACT(EPOCH FROM (b.end_time - b.start_time)) akan menghasilkan selisih dalam bentuk second
--- hasil dari EXTRACT(EPOCH ....) dibagi dengan 3600.0 lalu dijumlahkan dengan ketelitian 2 angka dibelakang koma
--- lalu hasil penjumlahan tersebut di ROUND
--- DATE_TRUNC truncate tanggal dan jam sampai awal bulan dari current timestamp. jadi
--- DATE_TRUNC('month', CURRENT_TIMESTAMP) + INTERVAL '1 month', tanggal dan jam awal bulan sekarang +  inverval 1 bulan
+-- 1. Rekap jam pemakaian yang benar-benar jatuh di bulan berjalan.
+-- Booking yang melintasi batas bulan hanya dihitung untuk bagian yang overlap dengan bulan ini.
 SELECT r.id AS room_id, r.name, COALESCE(
         ROUND(
             SUM(
                 EXTRACT(
                     EPOCH
-                    FROM (b.end_time - b.start_time)
+                    FROM (
+                        LEAST(b.end_time, DATE_TRUNC('month', CURRENT_TIMESTAMP) + INTERVAL '1 month')
+                        - GREATEST(b.start_time, DATE_TRUNC('month', CURRENT_TIMESTAMP))
+                    )
                 ) / 3600.0
             )::numeric, 2
         ), 0
@@ -24,10 +20,8 @@ FROM
     rooms r
     LEFT JOIN bookings b ON r.id = b.room_id
     AND b.status = 'CONFIRMED'
-    AND b.start_time >= DATE_TRUNC('month', CURRENT_TIMESTAMP)
-    AND b.start_time < (
-        DATE_TRUNC('month', CURRENT_TIMESTAMP) + INTERVAL '1 month'
-    )
+    AND b.start_time < DATE_TRUNC('month', CURRENT_TIMESTAMP) + INTERVAL '1 month'
+    AND b.end_time > DATE_TRUNC('month', CURRENT_TIMESTAMP)
 GROUP BY
     r.id,
     r.name

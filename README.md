@@ -19,7 +19,7 @@ Layanan RESTful API pemesanan ruang rapat perusahaan dengan pencegahan *double b
 
 - **Clean Architecture**: Pemisahan lapisan yang jelas antara *Domain (Entities & Interfaces)*, *Use Cases (Business Logic)*, dan *Infrastructure (Fastify HTTP, Controllers, Middlewares, PostgreSQL)*.
 - **Concurrency & Race Condition Handling**: Menggunakan isolasi database transaction dan pessimistic locking (`FOR UPDATE`) pada tabel `rooms` saat proses pengecekan tumpang tindih waktu booking.
-- **RESTful API Contract Compliance**: Format response sukses dan standar error (`error_code`, `message`) persis mengikuti spesifikasi teknis.
+- **RESTful API Contract Compliance**: Semua respons error memakai format `error_code` dan `message`.
 
 ---
 
@@ -77,7 +77,7 @@ Layanan HTTP aktif di: **`http://localhost:8080`**
 ## Menjalankan Pengujian Otomatis (Automated Testing)
 
 File pengujian `tests/booking.concurrency.test.ts` menguji:
-1. **Skenario Jadwal Bentrok**: Memverifikasi booking beririsan ditolak dengan status HTTP `409` dan `error_code: "ROOM_CONFLICT"`.
+1. **Skenario Jadwal Bentrok**: Booking pertama berhasil (`201`), lalu booking yang beririsan ditolak dengan `409` dan `error_code: "ROOM_CONFLICT"`.
 2. **Skenario Concurrency & Race Condition**: Mengirim 10 permintaan paralel serentak menggunakan `Promise.all` ke slot ruangan yang sama, memvalidasi tepat 1 request berhasil (`201`) dan 9 lainnya ditolak (`409`).
 
 Pastikan aplikasi sudah berjalan di `http://localhost:8080`, lalu jalankan:
@@ -120,6 +120,15 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
   }'
 ```
 
+Jika kredensial salah, server mengembalikan `401 Unauthorized` dengan format error standar:
+
+```json
+{
+  "error_code": "UNAUTHORIZED",
+  "message": "Email atau password salah"
+}
+```
+
 ---
 
 ### 2. Tambah Ruang Meeting (Khusus ADMIN)
@@ -135,6 +144,8 @@ curl -X POST http://localhost:8080/api/v1/rooms \
   }'
 ```
 
+Request ini mengembalikan `201 Created` beserta `id`, `name`, `capacity`, dan `is_active`. Pengguna dengan role `USER` menerima `403 Forbidden`.
+
 ---
 
 ### 3. Cek Ketersediaan Ruangan
@@ -144,6 +155,8 @@ Mendapatkan daftar ruangan aktif yang tidak memiliki jadwal bentrok pada rentang
 curl -X GET "http://localhost:8080/api/v1/rooms/available?start=2026-12-01T10:00:00Z&end=2026-12-01T12:00:00Z" \
   -H "Authorization: Bearer <JWT_TOKEN>"
 ```
+
+Respons sukses berbentuk `{ "data": [...] }`. Waktu harus berupa timestamp ISO-8601 UTC dengan `start` sebelum `end`.
 
 ---
 
@@ -162,6 +175,8 @@ curl -X POST http://localhost:8080/api/v1/bookings \
   }'
 ```
 
+Pemesanan yang berhasil mengembalikan `201 Created`. Waktu lampau atau rentang tidak valid menghasilkan `400` dengan `error_code: "INVALID_TIME"`; ruangan yang tidak ada menghasilkan `404`; ruangan nonaktif menghasilkan `400`; dan jadwal yang bentrok menghasilkan `409` dengan `error_code: "ROOM_CONFLICT"`.
+
 ---
 
 ### 5. Pembatalan Pemesanan
@@ -171,6 +186,8 @@ Membatalkan pemesanan yang ada. Hanya pemilik pesanan atau `ADMIN` yang diizinka
 curl -X PATCH http://localhost:8080/api/v1/bookings/1/cancel \
   -H "Authorization: Bearer <JWT_TOKEN>"
 ```
+
+Respons sukses berbentuk `{ "id": 1, "status": "CANCELLED" }`. Hanya pemilik booking atau ADMIN yang dapat membatalkan; pengguna lain menerima `403 Forbidden`, sedangkan ID yang tidak ditemukan menerima `404 Not Found`.
 
 ---
 
