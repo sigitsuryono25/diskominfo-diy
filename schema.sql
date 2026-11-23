@@ -23,28 +23,128 @@ CREATE TABLE IF NOT EXISTS rooms (
 
 CREATE TABLE IF NOT EXISTS bookings (
     id SERIAL PRIMARY KEY,
-    room_id INT NOT NULL REFERENCES rooms(id) ON DELETE RESTRICT,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    room_id INT NOT NULL REFERENCES rooms (id) ON DELETE RESTRICT,
+    user_id INT NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
     title VARCHAR(150) NOT NULL,
     start_time TIMESTAMP WITH TIME ZONE NOT NULL,
     end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED' CHECK (status IN ('CONFIRMED', 'CANCELLED')),
+    status VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED' CHECK (
+        status IN ('CONFIRMED', 'CANCELLED')
+    ),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Indexing for performance and query optimization
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_rooms_is_active ON rooms(is_active);
-CREATE INDEX IF NOT EXISTS idx_bookings_room_status ON bookings(room_id, status);
-CREATE INDEX IF NOT EXISTS idx_bookings_time_range ON bookings(room_id, status, start_time, end_time);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);
 
--- 2. Seed Initial Users
+CREATE INDEX IF NOT EXISTS idx_rooms_is_active ON rooms (is_active);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_room_status ON bookings (room_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_bookings_time_range ON bookings (
+    room_id,
+    status,
+    start_time,
+    end_time
+);
+
+-- 2. Seed Initial Users (Wajib dari Soal)
 -- Password for all accounts is 'password123'
--- Hash bcrypt 10 rounds: $2b$10$w8T9Vv4gO/M8g3ZcE2cZtOGzR/6q7F89jW11bN8g7H6m5K4l3i2a. (standard bcrypt hash for 'password123': $2b$10$y5Xo6t0kGk8E9bQ4F5i7ceWz8s2Hq5v0fUaL8G0OaL5N2O5Z4bO2e)
-INSERT INTO users (name, email, password_hash, role)
-VALUES 
-    ('Administrator', 'admin@test.com', '$2b$10$T8Zg8i8.UuO4b5l6r7e8auA9YV7V7R4K1N5m0b9l2y9q4G5t6u7i.', 'ADMIN'),
-    ('User Satu', 'user1@test.com', '$2b$10$T8Zg8i8.UuO4b5l6r7e8auA9YV7V7R4K1N5m0b9l2y9q4G5t6u7i.', 'USER'),
-    ('User Dua', 'user2@test.com', '$2b$10$T8Zg8i8.UuO4b5l6r7e8auA9YV7V7R4K1N5m0b9l2y9q4G5t6u7i.', 'USER')
-ON CONFLICT (email) DO NOTHING;
+INSERT INTO
+    users (
+        id,
+        name,
+        email,
+        password_hash,
+        role
+    )
+VALUES (
+        1,
+        'Administrator',
+        'admin@test.com',
+        '$2b$10$T8Zg8i8.UuO4b5l6r7e8auA9YV7V7R4K1N5m0b9l2y9q4G5t6u7i.',
+        'ADMIN'
+    ),
+    (
+        2,
+        'User Satu',
+        'user1@test.com',
+        '$2b$10$T8Zg8i8.UuO4b5l6r7e8auA9YV7V7R4K1N5m0b9l2y9q4G5t6u7i.',
+        'USER'
+    ),
+    (
+        3,
+        'User Dua',
+        'user2@test.com',
+        '$2b$10$T8Zg8i8.UuO4b5l6r7e8auA9YV7V7R4K1N5m0b9l2y9q4G5t6u7i.',
+        'USER'
+    )
+ON CONFLICT (id) DO NOTHING;
+
+-- 3. Seed Rooms (Sebagai referensi foreign key booking)
+INSERT INTO
+    rooms (id, name, capacity, is_active)
+VALUES (1, 'Ruang Garuda', 10, TRUE),
+    (2, 'Ruang Merapi', 20, TRUE),
+    (3, 'Ruang Malioboro', 6, TRUE),
+    (
+        4,
+        'Ruang Pemeliharaan (Nonaktif)',
+        8,
+        FALSE
+    )
+ON CONFLICT (id) DO NOTHING;
+
+-- 4. Seed Data Bookings
+-- Mencakup contoh:
+-- a. Booking bulan berjalan (untuk ngetes query analitik rekap pemakaian ruangan)
+-- b. Booking pada tanggal tertentu (untuk ngetes query/endpoint ruangan tersedia & cek overlap)
+-- c. Booking status CANCELLED (untuk memastikan filter status CONFIRMED berfungsi)
+INSERT INTO
+    bookings (
+        room_id,
+        user_id,
+        title,
+        start_time,
+        end_time,
+        status
+    )
+VALUES
+    -- Ruang Garuda (id: 1) - Booking pada bulan berjalan (2 jam)
+    (
+        1,
+        2,
+        'Sprint Planning Q1',
+        DATE_TRUNC('month', CURRENT_TIMESTAMP) + INTERVAL '2 days 09:00:00',
+        DATE_TRUNC('month', CURRENT_TIMESTAMP) + INTERVAL '2 days 11:00:00',
+        'CONFIRMED'
+    ),
+    -- Ruang Garuda (id: 1) - Booking bentrok / contoh soal 2026-12-01
+    (
+        1,
+        2,
+        'Tech Sync Diskominfo',
+        '2026-12-01 10:00:00+00',
+        '2026-12-01 12:00:00+00',
+        'CONFIRMED'
+    ),
+    -- Ruang Merapi (id: 2) - Booking bulan berjalan (3 jam)
+    (
+        2,
+        3,
+        'Workshop Arsitektur Microservices',
+        DATE_TRUNC('month', CURRENT_TIMESTAMP) + INTERVAL '5 days 13:00:00',
+        DATE_TRUNC('month', CURRENT_TIMESTAMP) + INTERVAL '5 days 16:00:00',
+        'CONFIRMED'
+    ),
+    -- Ruang Malioboro (id: 3) - Booking CANCELLED (tidak boleh masuk hitungan jam & ketersediaan)
+    (
+        3,
+        2,
+        'Koordinasi Internal (Dibatalkan)',
+        '2026-12-01 10:00:00+00',
+        '2026-12-01 11:30:00+00',
+        'CANCELLED'
+    )
+ON CONFLICT DO NOTHING;
