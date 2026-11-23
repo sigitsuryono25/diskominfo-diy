@@ -8,31 +8,31 @@ export class AppException extends Error {
 
 
 export class BadRequestException extends AppException {
-    constructor(message: string = "Bad Request", errorCode?: string) {
+    constructor(message: string = "Bad Request", errorCode: string = "BAD_REQUEST") {
         super(message, 400, errorCode);
     }
 }
 
 export class ConflictException extends AppException {
-    constructor(message: string = "Conflict", errorCode?: string) {
+    constructor(message: string = "Conflict", errorCode: string = "ROOM_CONFLICT") {
         super(message, 409, errorCode);
     }
 }
 
 export class UnauthorizedException extends AppException {
-    constructor(message: string = "Unauthorized") {
-        super(message, 401);
+    constructor(message: string = "Unauthorized", errorCode: string = "UNAUTHORIZED") {
+        super(message, 401, errorCode);
     }
 }
 
 export class ForbiddenException extends AppException {
-    constructor(message: string = "Forbidden") {
-        super(message, 403);
+    constructor(message: string = "Forbidden", errorCode: string = "FORBIDDEN") {
+        super(message, 403, errorCode);
     }
 }
 
 export class NotFoundException extends AppException {
-    constructor(message: string = "Not Found") {
-        super(message, 404);
+    constructor(message: string = "Not Found", errorCode: string = "NOT_FOUND") {
+        super(message, 404, errorCode);
     }
 }

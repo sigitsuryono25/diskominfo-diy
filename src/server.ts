@@ -11,15 +11,25 @@ const server = fastify({
 server.setErrorHandler((error, _request, reply) => {
   if (error instanceof AppException) {
     return reply.status(error.statusCode).send({
-      ...(error.errorCode ? { error_code: error.errorCode } : {}),
+      error_code: error.errorCode ?? (error.statusCode === 400 ? 'BAD_REQUEST' : 'INTERNAL_SERVER_ERROR'),
       message: error.message,
     });
   }
 
   server.log.error(error);
-  return reply.status(500).send({
-    error_code: 'INTERNAL_SERVER_ERROR',
-    message: 'Terjadi kesalahan pada server',
+  const statusCode = error.statusCode && error.statusCode >= 400 && error.statusCode < 600
+    ? error.statusCode
+    : 500;
+  return reply.status(statusCode).send({
+    error_code: error.code ?? (statusCode === 400 ? 'BAD_REQUEST' : 'INTERNAL_SERVER_ERROR'),
+    message: statusCode < 500 ? error.message : 'Terjadi kesalahan pada server',
+  });
+});
+
+server.setNotFoundHandler((_request, reply) => {
+  return reply.status(404).send({
+    error_code: 'NOT_FOUND',
+    message: 'Endpoint tidak ditemukan',
   });
 });
 
