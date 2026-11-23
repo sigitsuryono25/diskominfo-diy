@@ -7,3 +7,13 @@ export interface UsersEntity {
     created_at?: Date;
     updated_at?: Date;
 }
+
+export interface UserRequest {
+    email: string;
+    password: string;
+}
+
+
+export interface IUserRepository {
+    findByEmail(email: string): Promise<UsersEntity>
+}
