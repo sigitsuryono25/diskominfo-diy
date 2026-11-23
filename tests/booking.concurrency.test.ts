@@ -3,6 +3,17 @@ import assert from 'node:assert/strict';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8080/api/v1';
 
+function getFutureSlot(offsetDays: number): { startTime: string; endTime: string } {
+  // Keep the slot future-dated and unique across repeated test runs, including
+  // runs started within the same minute.
+  const start = new Date(Date.now() + offsetDays * 24 * 60 * 60 * 1000);
+  start.setUTCSeconds(start.getUTCSeconds() + (Date.now() % 60));
+  return {
+    startTime: start.toISOString(),
+    endTime: new Date(start.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
 async function login(email: string, password: string): Promise<string> {
   const response = await fetch(`${BASE_URL}/auth/login`, {
     method: 'POST',
@@ -19,11 +30,9 @@ async function login(email: string, password: string): Promise<string> {
 test('Skenario 1: Konflik Jadwal Bentrok (Sequential Overlap Test)', async () => {
   const token = await login('user1@test.com', 'password123');
 
-  // Menggunakan rentang waktu di masa depan (2027) agar selalu valid
-  const startTime = '2027-06-15T09:00:00Z';
-  const endTime = '2027-06-15T11:00:00Z';
-  const overlappingStart = '2027-06-15T10:00:00Z';
-  const overlappingEnd = '2027-06-15T12:00:00Z';
+  const { startTime, endTime } = getFutureSlot(30);
+  const overlappingStart = new Date(Date.parse(startTime) + 60 * 60 * 1000).toISOString();
+  const overlappingEnd = new Date(Date.parse(endTime) + 60 * 60 * 1000).toISOString();
 
   // 1. Booking pertama berhasil
   const res1 = await fetch(`${BASE_URL}/bookings`, {
@@ -34,14 +43,14 @@ test('Skenario 1: Konflik Jadwal Bentrok (Sequential Overlap Test)', async () =>
     },
     body: JSON.stringify({
       room_id: 1,
-      title: 'Booking Pertama',
+      title: 'Booking pertama',
       start_time: startTime,
       end_time: endTime,
     }),
   });
 
-  const body1 = (await res1.json()) as { id?: number; status?: string };
-  assert.equal(res1.status, 201, 'Booking pertama harus berhasil dibuat (201)');
+  const body1 = (await res1.json()) as { id?: number; status?: string; message?: string; error_code?: string };
+  assert.equal(res1.status, 201, `Booking pertama harus berhasil dibuat (201): ${JSON.stringify(body1)}`);
   assert.equal(body1.status, 'CONFIRMED');
 
   // 2. Booking kedua bentrok dengan booking pertama
@@ -67,9 +76,7 @@ test('Skenario 1: Konflik Jadwal Bentrok (Sequential Overlap Test)', async () =>
 test('Skenario 2: Concurrency & Race Condition Test (10 Concurrent Requests)', async () => {
   const token = await login('user2@test.com', 'password123');
 
-  // Menggunakan slot waktu spesifik di masa depan
-  const targetStartTime = '2027-07-20T14:00:00Z';
-  const targetEndTime = '2027-07-20T16:00:00Z';
+  const { startTime: targetStartTime, endTime: targetEndTime } = getFutureSlot(60);
   const totalConcurrentRequests = 10;
 
   // Siapkan 10 permintaan serentak untuk ruangan dan jam yang sama
@@ -95,9 +102,9 @@ test('Skenario 2: Concurrency & Race Condition Test (10 Concurrent Requests)', a
 
   for (const res of responses) {
     statusCounts[res.status] = (statusCounts[res.status] || 0) + 1;
+    const body = (await res.json()) as { error_code?: string };
     if (res.status === 409) {
-      const errorBody = (await res.json()) as { error_code?: string };
-      assert.equal(errorBody.error_code, 'ROOM_CONFLICT');
+      assert.equal(body.error_code, 'ROOM_CONFLICT');
     }
   }
 
